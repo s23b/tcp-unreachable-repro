@@ -19,11 +19,13 @@ Short structure description:
     gomobile bind -target=android -o gotcp.aar
     ```
 
-1. Change the `SSID` and `WIFI_PASS` variables in `MainActivity.java` to a wifi you have access to.
+1. Change the `SSID` and `WIFI_PASS` variables in `MainActivity.java` to a wifi you have access to, and `HOST` and `PORT` to the address of a listening socket in that network.
 
     ```java
     public final static String SSID = "<Wifi SSID>";
     public final static String WIFI_PASS = "<Wifi Pass>";
+    public final static String HOST = "192.168.0.1";
+    public final static int PORT = 80;
     ```
 
 1. Start android app

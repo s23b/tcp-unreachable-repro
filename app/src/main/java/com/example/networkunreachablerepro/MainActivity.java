@@ -6,20 +6,65 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
+import android.net.Network;
 import android.net.wifi.WifiNetworkSpecifier;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.os.StrictMode;
 import android.widget.TextView;
+import java.net.Socket;
 
 import gotcp.Gotcp;
 
 public class MainActivity extends AppCompatActivity {
-    public final static String SSID = "<Wifi SSID>";
-    public final static String WIFI_PASS = "<Wifi Pass>";
+    public final static String SSID = "<SSID>";
+    public final static String WIFI_PASS = "<WIFI_PASS>";
+    public final static String HOST = "192.168.0.1";
+    public final static int PORT = 80;
 
     private ConnectivityManager connectivityManager;
     private TextView textView;
+
+    static {
+        System.loadLibrary("networkunreachablerepro");
+    }
+
+    private native void cDial(String host, int port);
+
+    private void updateText(String text) {
+        runOnUiThread(() -> textView.setText(text));
+        Log.e("NetUnreach", text);
+    }
+
+    interface TestBody {
+        public void run() throws Exception;
+    }
+
+    // Run the test body and print out the debug messages
+    private void runTest(String name, TestBody body) {
+        try {
+            updateText(name + " - Dialing");
+            body.run();
+            updateText(name + " - Dial Successful");
+        } catch (Exception e) {
+            Log.e("NetUnreach", name + " - Dial failed", e);
+            updateText(name + " - " + e.getMessage());
+        }
+    }
+
+    // Run the test body on a new thread and print out the debug messages
+    public void runTestOnSeparateThread(String name, TestBody body) {
+        Thread thread = new Thread(() -> runTest(name, body));
+        thread.start();
+
+        try {
+            thread.join();
+        } catch (Exception e) {
+            Log.e("NetUnreach", name + " - Thread Join Failed", e);
+            updateText(name + " - " + e.getMessage());
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,6 +75,9 @@ public class MainActivity extends AppCompatActivity {
 
         this.connectivityManager = (ConnectivityManager) getApplicationContext()
                 .getSystemService(Context.CONNECTIVITY_SERVICE);
+        
+        // Allow network operations on the UI thread
+        StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().permitAll().build());
     }
 
     public void onWifiConnect(View button) {
@@ -48,22 +96,44 @@ public class MainActivity extends AppCompatActivity {
                     .build();
 
             connectivityManager.requestNetwork(networkRequest, new ConnectivityManager.NetworkCallback() {
+                @Override public void onAvailable(Network network) {
+                    super.onAvailable(network);
+                    connectivityManager.bindProcessToNetwork(network);
+                    updateText ("Connection - Available " + network.toString());
+                }
 
+                @Override
+                public void onUnavailable() {
+                    super.onUnavailable();
+                    updateText("Connection - Unavailable");
+                }
             });
         } catch (Exception e) {
             Log.e("NetUnreach", "Wifi connect failed", e);
         }
     }
 
-    public void onDialClick(View button) {
-        try {
-            this.textView.setText("...");
+    public void onGoDialClick(View button) {
+        runTest("Go", () -> Gotcp.doDial(HOST, PORT));
+    }
 
-            Gotcp.doDial();
-        } catch (Exception e) {
-            Log.e("NetUnreach", "Dial failed", e);
+    public void onGoThreadDialClick(View button) {
+        runTestOnSeparateThread("Go Thread", () -> Gotcp.doDial(HOST, PORT));
+    }
+    
+    public void onJavaDialClick(View button) {
+        runTest("Java", () -> new Socket(HOST, PORT).close());
+    }
 
-            this.textView.setText(e.getMessage());
-        }
+    public void onJavaThreadDialClick(View button) {
+        runTestOnSeparateThread("Java Thread", () -> new Socket(HOST, PORT).close());
+    }
+
+    public void onCDialClick(View button) {
+        runTest("C", () -> cDial(HOST, PORT));
+    }
+
+    public void onCThreadDialClick(View button) {
+        runTestOnSeparateThread("C Thread", () -> cDial(HOST, PORT));
     }
 }

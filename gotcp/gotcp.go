@@ -1,6 +1,7 @@
 package gotcp
 
 import (
+	"fmt"
 	"net"
 	"time"
 
@@ -9,15 +10,16 @@ import (
 
 var log = logrus.New()
 
-func DoDial() error {
-	log.Info("Entered DoDial")
+func DoDial(host string, port int) error {
+	log.Infof("gotcp.DoDial - Called with (%s, %d)", host, port)
 
-	conn, err := net.DialTimeout("tcp", "192.168.0.1:80", 10*time.Second)
-	log.Infof("Error is %v", err)
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), 10*time.Second)
+	log.Infof("gotcp.DoDial - Error is %v", err)
 
 	if err == nil {
-		log.Infof("Closing conn")
+		log.Info("gotcp.DoDial - Closing connection")
 		err = conn.Close()
+		log.Info("gotcp.DoDial - Connection closed")
 	}
 
 	return err
