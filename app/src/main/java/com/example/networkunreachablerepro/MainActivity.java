@@ -53,19 +53,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // Run the test body on a new thread and print out the debug messages
-    public void runTestOnSeparateThread(String name, TestBody body) {
-        Thread thread = new Thread(() -> runTest(name, body));
-        thread.start();
-
-        try {
-            thread.join();
-        } catch (Exception e) {
-            Log.e("NetUnreach", name + " - Thread Join Failed", e);
-            updateText(name + " - " + e.getMessage());
-        }
-    }
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -113,27 +100,23 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void onGoDialClick(View button) {
-        runTest("Go", () -> Gotcp.doDial(HOST, PORT));
-    }
-
-    public void onGoThreadDialClick(View button) {
-        runTestOnSeparateThread("Go Thread", () -> Gotcp.doDial(HOST, PORT));
-    }
-    
     public void onJavaDialClick(View button) {
         runTest("Java", () -> new Socket(HOST, PORT).close());
-    }
-
-    public void onJavaThreadDialClick(View button) {
-        runTestOnSeparateThread("Java Thread", () -> new Socket(HOST, PORT).close());
     }
 
     public void onCDialClick(View button) {
         runTest("C", () -> cDial(HOST, PORT));
     }
 
-    public void onCThreadDialClick(View button) {
-        runTestOnSeparateThread("C Thread", () -> cDial(HOST, PORT));
+    public void onGoDialClick(View button) {
+        runTest("Go net", () -> Gotcp.netDial(HOST, PORT));
+    }
+
+    public void onCGoDialClick(View button) {
+        runTest("Go cgo", () -> Gotcp.cGoDial(HOST, PORT));
+    }
+
+    public void onSyscallDialClick(View button) {
+        runTest("Go syscall", () -> Gotcp.syscallDial(HOST, PORT));
     }
 }
